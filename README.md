@@ -1,6 +1,6 @@
 Uma cópia do YouTube para meu portfólio (não finalizado). Meu primeiro projeto para mostrar minhas abilidades, e para aprender um pouco sobre APIs.
 
-Se quiser checar o que eu fiz clique aqui -> https://yt-clone-portifolio.onrender.com
+Se quiser checar o que eu fiz clique aqui -> https://yt-clone-portfolio.onrender.com
 
 Do lado da barra de pesquisa tem dois botões, um para mostrar só videos e o outro para mostrar só canais. O botão de video estara sempre checado a não ser que o botão de canais seja clicado.
 
