@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <title>Search</title>
+    </head>
+
+    <body>
+
+        <form action="{{ url_for('results') }}" method="POST" class="search-container">
+            <input type='text' name='search' id="search" placeholder="Search" required></input>
+
+            <button type="submit">Submit</button>
+            <br>
+            <input type="radio" id="channel-btn" name='change-btn' value="channel-btn">
+            <label for="channel-btn" class="default-text change-to-channel-btn">Channels</label>
+            
+            <input type='radio' id="vidoe-btn" name="change-btn" value="vidoe-btn" checked>
+            <label for="vidoe-btn" class="default-text change-to-video-btn">Videos</label>
+        </form>
+
+    </body>
+</html>

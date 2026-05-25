@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <title>Search</title>
+    </head>
+
+    <body>
+        <!-- search bar two radio buttons to change from showing only videos to showing only channels based on what was searched -->
+        <form action="{{ url_for('results') }}" method="POST" class="search-container">
+            <input type='text' name='search' id="search" placeholder="Search" required></input>
+
+            <button type="submit">Submit</button>
+            <br>
+            <input type="radio" id="channel-btn" name='change-btn' value="channel-btn">
+            <label for="channel-btn" class="default-text change-to-channel-btn">Channels</label>
+            
+            <input type='radio' id="vidoe-btn" name="change-btn" value="vidoe-btn" checked>
+            <label for="vidoe-btn" class="default-text change-to-video-btn">Videos</label>
+        </form>
+
+        <br>
+        <!--Channels searched-->
+        <div class="ch-src-results">
+            {% for row in channel_matrix %}
+            <!--grabs and uses the channel id as the url of the channel page-->
+                <a href="{{ url_for('channel', ch_id=row[0]) }}">
+                    <div class="channel-container">
+                        <!--channel thumbnail-->
+                        <div class="channel-avatar-container">
+                            <img src="{{ row[3] }}"
+                            class="mini-ch-avatar"
+                            alt="{{ row[1] }} Channel Logo"
+                            width="88" 
+                            height="88"
+                            loading="lazy">
+                        </div>
+                        <div class="ch-info-container">
+                            <!--channel title-->
+                            <div class="default-text channel-name">{{ row[2] }}</div>
+                            <!--channel sub count-->
+                            <div class="default-text channel-sub-count">{{ row[1] }} subscribers</div>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+        
+
+        <!--Videos searched-->
+        <div class="video-src-results">
+            {% for row in video_matrix %}
+                <div class="video-container">
+                    <div class="video-url-thumbnail-container">
+                        <!--video hyperlink plus thumbnail-->
+                        <a href="http://www.youtube.com/embed/{{ row[0] }}">
+                            <img class='video-thumbnail'
+                            src="{{ row[1] }}" 
+                            title="{{ row[2] }}"
+                            alt="{{ row[2] }}"
+                            loading="lazy">
+                        </a>
+                    </div>
+                    <div class="video-info-container">
+                        <!--search result videos title, date published, and view count-->
+                        <a href="http://www.youtube.com/embed/{{ row[0] }}">
+                            <div class="default-text src-result-video-title">{{ row[2] }}</div>
+                            <div class="default-text src-result-video-date">{{ row[3] }}</div>
+                            <div class="default-text src-result-video-view-count">{{ row[4] }}</div>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+    </body>
+
+</html>
