@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 import googleapiclient.discovery
 
 load_dotenv()
-API_KEY = os.getenv("API_KEY")
+API_KEY = os.getenv("SECRET_API_KEY")
 youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=API_KEY)
 
 app = Flask(__name__)
