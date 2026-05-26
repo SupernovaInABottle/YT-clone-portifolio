@@ -1,5 +1,7 @@
 Uma cópia do YouTube para meu portfólio (não finalizado). Meu primeiro projeto para mostrar minhas abilidades, e para aprender um pouco sobre APIs.
 
+(Update: botões de 'videos' e 'ao vivo' adicionado em canais)
+
 Se quiser checar o que eu fiz clique aqui -> https://yt-clone-portfolio.onrender.com
 
 Do lado da barra de pesquisa tem dois botões, um para mostrar só videos e o outro para mostrar só canais. O botão de video estara sempre checado a não ser que o botão de canais seja clicado.
@@ -13,5 +15,4 @@ Caso o botão de canais seja clicado e algo é pesquisado o resultado abaixo é 
 <img width="1728" height="790" alt="Screenshot 2026-05-25 172515" src="https://github.com/user-attachments/assets/1e0fea72-4ffb-462b-86c9-c16e77a29816" />
 
 Caso um canal seja clicado o usuario sera redirecionada para a página abaixo.
-(Por enquanto só streams (transmissões) completas aparecem nessa area mas irei adicionar um botão para videos e um para streams em breve)
 <img width="1730" height="785" alt="image" src="https://github.com/user-attachments/assets/7a175e29-cefa-4bce-9ec9-f4c7b8778aee" />
