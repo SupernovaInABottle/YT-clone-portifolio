@@ -1,6 +1,6 @@
-Uma cópia do YouTube para meu portfólio (não finalizado). Meu primeiro projeto para mostrar minhas abilidades, e para aprender um pouco sobre APIs.
-
 (Update: botões de 'videos' e 'ao vivo' adicionado em canais)
+
+Uma cópia do YouTube para meu portfólio (não finalizado). Meu primeiro projeto para mostrar minhas abilidades, e para aprender um pouco sobre APIs.
 
 Se quiser checar o que eu fiz clique aqui -> https://yt-clone-portfolio.onrender.com
 
