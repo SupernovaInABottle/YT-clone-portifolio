@@ -1,12 +1,12 @@
 import os
 import requests
 import arrow
-from dotenv import load_dotenv
-from flask import Flask, render_template, request, url_for
+from isoduration import parse_duration
+from datetime import timedelta
+from flask import Flask, render_template, request
 from googleapiclient.discovery import build
 import googleapiclient.discovery
 
-load_dotenv()
 API_KEY = os.getenv("SECRET_API_KEY")
 youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=API_KEY)
 
@@ -31,6 +31,19 @@ def format_big_numbers(count):
 def parse_date(date):
     past_date = arrow.get(date)
     return past_date.humanize(locale='pt-br')
+
+def convert_duration(iso_duration):
+    
+    duration = parse_duration(iso_duration)
+
+    # Convert the duration to a timedelta object
+    td = timedelta(
+        hours=float(duration.time.hours),
+        minutes=float(duration.time.minutes),
+        seconds=float(duration.time.seconds)
+    )
+
+    return td
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -167,22 +180,17 @@ def videos(ch_id):
     # different rows in the ch_video_matrix so every video has its respective titles etc.
     non_short_videos = []
 
-    # Contains upcoming, live, and completed streams
-    ulc_broadcasts = []
-
     ch_video_matrix = []
     ch_video_matrix.clear()
 
     ch_data_request = youtube.channels().list(
         part='snippet',
-        id=ch_id,
-        pageToken=next_page_token,
+        id=ch_id
     )
 
     ch_subscriber_request = youtube.channels().list(
         part='statistics',
-        id=ch_id,
-        pageToken=next_page_token,
+        id=ch_id
     )
 
     ch_data_response = ch_data_request.execute()
@@ -196,63 +204,34 @@ def videos(ch_id):
     ch_custom_url = ch_data_response['items'][0]['snippet']['customUrl']
 
     # Looks for completed broadcasts in the channel (does not contain videos)
-    ch_clive_request = youtube.search().list(
-        part='snippet',
-        channelId=ch_id,
-        type='video',
-        eventType='completed',
-        order='date',
-        maxResults=10
-    )
-
-    # Looks for upcoming broadcasts in the channel (does not contain videos)
-    ch_ulive_request = youtube.search().list(
-        part='snippet',
-        channelId=ch_id,
-        type='video',
-        eventType='upcoming',
-        order='date',
-        maxResults=10
-    )
-
-    # Looks for live broadcasts in the channel (does not contain videos)
-    ch_live_request = youtube.search().list(
-        part='snippet',
-        channelId=ch_id,
-        type='video',
-        eventType='live',
-        order='date',
-        maxResults=10
-    )
-
-    # Looks for every video in the channel (also contains completed broadcasts)
-    ch_video_request = youtube.search().list(
+    ch_content_request = youtube.search().list(
         part='snippet',
         channelId=ch_id,
         type='video',
         order='date',
-        maxResults=10
+        maxResults=10,
+        pageToken=next_page_token
     )
+    ch_content_response = ch_content_request.execute()
 
-    ch_clive_response = ch_clive_request.execute()
-    ch_ulive_response = ch_ulive_request.execute()
-    ch_live_response = ch_live_request.execute()
-
-    ch_video_response = ch_video_request.execute()
-
-    # for item_id retrieved in ch_live_response add it to the ulc_broadcasts list
-    for item_id in ch_ulive_response['items'] or ch_live_response['items'] or ch_clive_response['items']:
-        ulc_broadcasts.append(item_id['id']['videoId'])
-
-
-    # If the item_id is not in the completed broadcast list or a short then add it to non_short_videos
-    for item_id in ch_video_response['items']:
-        if item_id not in ulc_broadcasts and not is_short(item_id['id']['videoId']):
-            non_short_videos.append(item_id['id']['videoId'])
-
-    next_page_token = ch_video_response.get('nextPageToken')
+    next_page_token = ch_content_response.get('nextPageToken')
     if not next_page_token:
         pass
+
+    # for content_id in ch_content_response check if the id has something inside liveStreamingDetails if so its a stream
+    for content_id in ch_content_response['items']:
+        content_request = youtube.videos().list(
+            part='liveStreamingDetails',
+            id=content_id['id']['videoId'],
+        )
+        content_response = content_request.execute()
+
+        video_details = content_response['items'][0].get('liveStreamingDetails', {})
+        video_id = content_response['items'][0]['id']
+        actualStartTime = video_details.get('actualStartTime')
+        # for item_id retrieved in ch_content_request check if it has liveStreamingDetails if so then it is a stream        
+        if not actualStartTime and not is_short(video_id):
+            non_short_videos.append(video_id)
 
     for content_id in non_short_videos:
         video_data_request = youtube.videos().list(
@@ -265,21 +244,26 @@ def videos(ch_id):
             id=content_id
         )
 
+        duration_request = youtube.videos().list(
+            part='contentDetails',
+            id=content_id
+        )
+
+        duration_response = duration_request.execute()
         video_view_count_response = video_view_count_request.execute()
         video_data_response = video_data_request.execute()
 
-        # Retrieves the video id, title, date published, and thumbnail respectively
+        # Retrieves the video id, title, date published, duration, and thumbnail respectively
         video_title = video_data_response['items'][0]['snippet']['title']
         date_published = parse_date(video_data_response['items'][0]['snippet']['publishedAt'])
         vid_thumbnails_get = video_data_response['items'][0]['snippet']['thumbnails']
         thumbnail_url = vid_thumbnails_get.get('medium')['url']
         video_view_count = format_big_numbers(video_view_count_response['items'][0]['statistics']['viewCount'])
-        
-        row = []
-        row.extend([content_id, video_title, date_published, thumbnail_url, video_view_count])
-        ch_video_matrix.append(row)
-    print(ch_video_matrix)
+        video_duration = convert_duration(duration_response['items'][0]['contentDetails']['duration'])
 
+        row = []
+        row.extend([content_id, video_title, date_published, thumbnail_url, video_view_count, video_duration])
+        ch_video_matrix.append(row)
 
     return render_template('videos.html', ch_id=ch_id, channel_title=channel_title,
                            ch_thumbnail_url=ch_thumbnail_url,
@@ -291,30 +275,28 @@ def videos(ch_id):
 def streams(ch_id):
 
     next_page_token = None
-    # contains multiple rows, each with information about completed and live broadcasts retrieved below
-    ch_live_matrix = []
-    ch_live_matrix.clear()
-
-    # contains multiple rows, each with information about upcoming broadcasts retrieved below
+    # contains multiple rows of completed, upcoming, and currently live strems, each with information about completed and live broadcasts retrieved below
+    ch_clive_matrix = []
     ch_ulive_matrix = []
+    ch_live_matrix = []
+
     ch_ulive_matrix.clear()
+    ch_live_matrix.clear()
+    ch_clive_matrix.clear()
 
-    # Contains live, and completed streams
-    lc_broadcasts = []
-
-    # contains upcoming live streams
+    # Contains completed streams, live streams, and upcoming live streams
+    complete_broadcasts = []
+    live_broadcasts = []
     up_broadcasts = []
 
     ch_data_request = youtube.channels().list(
         part='snippet',
-        id=ch_id,
-        pageToken=next_page_token,
+        id=ch_id
     )
 
     ch_subscriber_request = youtube.channels().list(
         part='statistics',
-        id=ch_id,
-        pageToken=next_page_token,
+        id=ch_id
     )
 
     ch_data_response = ch_data_request.execute()
@@ -327,79 +309,44 @@ def streams(ch_id):
     ch_subscriber_count = ch_subscriber_response['items'][0]['statistics']['subscriberCount']
     ch_custom_url = ch_data_response['items'][0]['snippet']['customUrl']
 
-    # Looks for completed broadcasts in the channel (does not contain videos)
-    ch_clive_request = youtube.search().list(
+    # Looks for liveStreamingDetails of an id
+    ch_content_request = youtube.search().list(
         part='snippet',
         channelId=ch_id,
         type='video',
-        eventType='completed',
         order='date',
-        maxResults=10
+        maxResults=10,
+        pageToken=next_page_token
     )
 
-    # Looks for upcoming broadcasts in the channel (does not contain videos)
-    ch_ulive_request = youtube.search().list(
-        part='snippet',
-        channelId=ch_id,
-        type='video',
-        eventType='upcoming',
-        order='date',
-        maxResults=10
-    )
+    ch_content_response = ch_content_request.execute()
 
-    # Looks for live broadcasts in the channel (does not contain videos)
-    ch_live_request = youtube.search().list(
-        part='snippet',
-        channelId=ch_id,
-        type='video',
-        eventType='live',
-        order='date',
-        maxResults=10
-    )
-
-    ch_clive_response = ch_clive_request.execute()
-    ch_ulive_response = ch_ulive_request.execute()
-    ch_live_response = ch_live_request.execute()
-
-    # for item_id retrieved in ch_clive_response add it to the lc_broadcasts list
-    for item_id in ch_live_response['items'] or ch_clive_response['items']:
-        lc_broadcasts.append(item_id['id']['videoId'])
-
-    for item_id in ch_ulive_response['items']:
-        up_broadcasts.append(item_id['id']['videoId'])
-
-    # reverses the list so the upcoming stream farthest into the future is the first to be shown
-    up_broadcasts = up_broadcasts[::-1]
-
-    next_page_token = ch_clive_response.get('nextPageToken')
+    next_page_token = ch_content_response.get('nextPageToken')
     if not next_page_token:
         pass
 
-    for content_id in lc_broadcasts:
-        stream_data_request = youtube.videos().list(
-            part='snippet',
-            id=content_id
+    # for content_id in ch_content_response check if the id has something inside liveStreamingDetails if so its a stream
+    for content_id in ch_content_response['items']:
+        content_request = youtube.videos().list(
+            part='liveStreamingDetails',
+            id=content_id['id']['videoId'],
         )
+        content_response = content_request.execute()
 
-        stream_view_count_request = youtube.videos().list(
-            part='statistics',
-            id=content_id
-        )
+        live_details = content_response['items'][0].get('liveStreamingDetails', {})
+        actual_start_time = live_details.get('actualStartTime')
+        actual_end_time = live_details.get('actualEndTime')
+        # for item_id retrieved in ch_clive_response add it to the lc_broadcasts list
+        if actual_end_time:
+            complete_broadcasts.append(content_response['items'][0]['id'])
 
-        stream_data_response = stream_data_request.execute()
-        stream_view_count_response = stream_view_count_request.execute()
-
-        # Retrieves the video id, title, date published, and thumbnail respectively
-        stream_title = stream_data_response['items'][0]['snippet']['title']
-        date_published = parse_date(stream_data_response['items'][0]['snippet']['publishedAt'])
-        stream_thumbnails_get = stream_data_response['items'][0]['snippet']['thumbnails']
-        thumbnail_url = stream_thumbnails_get.get('medium')['url']
-        stream_view_count = format_big_numbers(stream_view_count_response['items'][0]['statistics']['viewCount'])
+        elif actual_start_time:
+            live_broadcasts.append(content_response['items'][0]['id'])
         
-        row = []
-        row.extend([content_id, stream_title, date_published, thumbnail_url, stream_view_count])
-        ch_live_matrix.append(row)
-    
+        else:
+            up_broadcasts.append(content_response['items'][0]['id'])
+
+    # Retrieves data for upcoming broadcasts
     for content_id in up_broadcasts:
         stream_data_request = youtube.videos().list(
             part='snippet',
@@ -420,21 +367,85 @@ def streams(ch_id):
         stream_view_count_response = stream_view_count_request.execute()
         stream_start_time_response = stream_start_time_request.execute()
 
+        details = stream_start_time_response['items'][0].get('liveStreamingDetails', {})
+
         # Retrieves the video id, title, date published, and thumbnail respectively
         stream_title = stream_data_response['items'][0]['snippet']['title']
-        start_time = parse_date(stream_start_time_response['items'][0]['liveStreamingDetails']['scheduledStartTime'])
+        start_time = parse_date(details.get('scheduledStartTime'))
         stream_thumbnails_get = stream_data_response['items'][0]['snippet']['thumbnails']
         thumbnail_url = stream_thumbnails_get.get('medium')['url']
         stream_view_count = format_big_numbers(stream_view_count_response['items'][0]['statistics']['viewCount'])
         
-        row = []
-        row.extend([content_id, stream_title, start_time, thumbnail_url, stream_view_count])
-        ch_ulive_matrix.append(row)
+        row_up = []
+        row_up.extend([content_id, stream_title, start_time, thumbnail_url, stream_view_count])
+        ch_ulive_matrix.append(row_up)
+
+
+    # Retrieves data for completed broadcasts
+    for content_id in complete_broadcasts:
+        stream_data_request = youtube.videos().list(
+            part='snippet',
+            id=content_id
+        )
+
+        stream_view_count_request = youtube.videos().list(
+            part='statistics',
+            id=content_id
+        )
+
+        duration_request = youtube.videos().list(
+            part='contentDetails',
+            id=content_id
+        )
+
+        stream_data_response = stream_data_request.execute()
+        stream_view_count_response = stream_view_count_request.execute()
+        duration_response = duration_request.execute()
+
+        # Retrieves the video id, title, date published, and thumbnail respectively
+        stream_title = stream_data_response['items'][0]['snippet']['title']
+        date_published = parse_date(stream_data_response['items'][0]['snippet']['publishedAt'])
+        stream_thumbnails_get = stream_data_response['items'][0]['snippet']['thumbnails']
+        thumbnail_url = stream_thumbnails_get.get('medium')['url']
+        stream_view_count = format_big_numbers(stream_view_count_response['items'][0]['statistics']['viewCount'])
+        duration = convert_duration(duration_response['items'][0]['contentDetails']['duration'])
+
+        row_complete = []
+        row_complete.extend([content_id, stream_title, date_published, thumbnail_url, stream_view_count, duration])
+        ch_clive_matrix.append(row_complete)
+
+
+    # Retrieves data for live broadcasts
+    for content_id in live_broadcasts:
+        stream_data_request = youtube.videos().list(
+            part='snippet',
+            id=content_id
+        )
+
+        stream_view_count_request = youtube.videos().list(
+            part='statistics',
+            id=content_id
+        )
+
+        stream_data_response = stream_data_request.execute()
+        stream_view_count_response = stream_view_count_request.execute()
+
+        # Retrieves the video id, title, date published, and thumbnail respectively
+        stream_title = stream_data_response['items'][0]['snippet']['title']
+        date_published = parse_date(stream_data_response['items'][0]['snippet']['publishedAt'])
+        stream_thumbnails_get = stream_data_response['items'][0]['snippet']['thumbnails']
+        thumbnail_url = stream_thumbnails_get.get('medium')['url']
+        stream_view_count = format_big_numbers(stream_view_count_response['items'][0]['statistics']['viewCount'])
+        
+        row_live = []
+        row_live.extend([content_id, stream_title, date_published, thumbnail_url, stream_view_count])
+        ch_live_matrix.append(row_live)
 
     return render_template('streams.html', ch_id=ch_id, channel_title=channel_title,
                            ch_thumbnail_url=ch_thumbnail_url,
                            ch_subscriber_count=format_big_numbers(ch_subscriber_count),
-                           ch_custom_url=ch_custom_url, ch_ulive_matrix=ch_ulive_matrix, ch_live_matrix=ch_live_matrix)
+                           ch_custom_url=ch_custom_url, ch_ulive_matrix=ch_ulive_matrix,
+                           ch_clive_matrix=ch_clive_matrix, ch_live_matrix=ch_live_matrix)
 
 
 

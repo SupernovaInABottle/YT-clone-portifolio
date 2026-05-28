@@ -149,17 +149,17 @@ a {
     gap: 10px;
 }
 
-.in-channel-video-title {
+.video-title {
     width: 300px;
     margin-top: 10px;
     overflow-wrap: break-word;
 }
 
-.in-channel-video-date {
+.video-date {
     margin-top: 10px;
 }
 
-.in-channel-view-count {
+.view-count {
     margin-top: 10px;
 }
 

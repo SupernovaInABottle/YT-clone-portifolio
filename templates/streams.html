@@ -54,6 +54,7 @@
             </a>
         </div>
 
+        <!--Upcomming broadcasts logic-->
         <div class="ch-video-grid-container">
             {% for row in ch_ulive_matrix %}
                 <div class="ch-grid">
@@ -68,15 +69,16 @@
                         </a>
                         <div class="video-title-date">
                             <!--channel videos title, date published, and view count-->
-                            <div class="default-text in-channel-video-title">{{ row[1] }}</div>
-                            <div class="default-text in-channel-video-date">{{ row[2] }}</div>
-                            <div class="default-text in-channel-view-count">{{ row[4] }} visualizações</div>
+                            <div class="default-text video-title">{{ row[1] }}</div>
+                            <div class="default-text video-date">{{ row[2] }}</div>
+                            <div class="default-text view-count">{{ row[4] }} visualizações</div>
                         </div>
                     </div>
                     
                 </div>
             {% endfor %}
 
+            <!--Live broadcasts logic-->
             {% for row in ch_live_matrix %}
                 <div class="ch-grid">
 
@@ -90,9 +92,33 @@
                         </a>
                         <div class="video-title-date">
                             <!--channel videos title, date published, and view count-->
-                            <div class="default-text in-channel-video-title">{{ row[1] }}</div>
-                            <div class="default-text in-channel-video-date">{{ row[2] }}</div>
-                            <div class="default-text in-channel-view-count">{{ row[4] }} visualizações</div>
+                            <div class="default-text video-title">{{ row[1] }}</div>
+                            <div class="default-text video-date">{{ row[2] }}</div>
+                            <div class="default-text view-count">{{ row[4] }} visualizações</div>
+                        </div>
+                    </div>
+                    
+                </div>
+            {% endfor %}
+
+            <!--Completed broadcasts logic-->
+            {% for row in ch_clive_matrix %}
+                <div class="ch-grid">
+
+                    <div class="video-thumb-container">
+                        <a href="http://www.youtube.com/embed/{{ row[0] }}">
+                            <img class='video-thumbnail'
+                            src="{{ row[3] }}"
+                            title="{{ row[1] }}"
+                            alt="{{ row[1] }}"
+                            loading="lazy">
+                        </a>
+                        <div class="video-title-date">
+                            <!--channel videos title, date published, and view count-->
+                            <div class="default-text video-title">{{ row[1] }}</div>
+                            <div class="default-text video-duration">{{ row[5] }}</div>
+                            <div class="default-text video-date">{{ row[2] }}</div>
+                            <div class="default-text view-count">{{ row[4] }} visualizações</div>
                         </div>
                     </div>
                     
