@@ -1,6 +1,6 @@
-(Update: Logica otimizada e duracao adicionada)
+(Update: A aba de videos na pagina de um canal mostrara videos e shorts ao inves de videos e transmissoes completas)
 
-Uma cópia do YouTube para meu portfólio (não finalizado). Meu primeiro projeto para mostrar minhas abilidades, e para aprender sobre APIs.
+Uma cópia do YouTube para meu portfólio (não finalizado). Um projeto para mostrar minhas abilidades, e para aprender sobre APIs.
 
 Se quiser checar o que eu fiz clique aqui -> https://yt-clone-portfolio.onrender.com
 
