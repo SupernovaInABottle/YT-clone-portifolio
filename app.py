@@ -64,7 +64,7 @@ def results():
     video_matrix = []
 
     # Contains every video id retrieved
-    non_short_videos = []
+    videos_and_shorts = []
 
     channel_matrix.clear()
     video_matrix.clear()
@@ -136,14 +136,14 @@ def results():
         # If the video is not a short add it to the list
         for item in relevant_video_response['items']:
             if not is_short(item['id']['videoId']):
-                non_short_videos.append(item['id']['videoId'])
+                videos_and_shorts.append(item['id']['videoId'])
 
         next_page_token = relevant_video_response.get('nextPageToken')
         if not next_page_token:
             pass
 
 
-    for videoid in non_short_videos:
+    for videoid in videos_and_shorts:
         video_data_request = youtube.videos().list(
             part='snippet',
             id=videoid
@@ -176,9 +176,9 @@ def videos(ch_id):
 
     next_page_token = None
 
-    # used for storing many video ids that will be going into 
-    # different rows in the ch_video_matrix so every video has its respective titles etc.
-    non_short_videos = []
+    # used for storing many videos and shorts ids that will be going into 
+    # different rows in the ch_video_matrix so every video and shorts has its respective titles etc.
+    videos_and_shorts = []
 
     ch_video_matrix = []
     ch_video_matrix.clear()
@@ -228,12 +228,12 @@ def videos(ch_id):
 
         video_details = content_response['items'][0].get('liveStreamingDetails', {})
         video_id = content_response['items'][0]['id']
-        actualStartTime = video_details.get('actualStartTime')
-        # for item_id retrieved in ch_content_request check if it has liveStreamingDetails if so then it is a stream        
-        if not actualStartTime and not is_short(video_id):
-            non_short_videos.append(video_id)
+        scheduled_start_time = video_details.get('scheduledStartTime')
 
-    for content_id in non_short_videos:
+        if not scheduled_start_time: 
+            videos_and_shorts.append(video_id)
+
+    for content_id in videos_and_shorts:
         video_data_request = youtube.videos().list(
             part='snippet',
             id=content_id
@@ -327,24 +327,28 @@ def streams(ch_id):
 
     # for content_id in ch_content_response check if the id has something inside liveStreamingDetails if so its a stream
     for content_id in ch_content_response['items']:
-        content_request = youtube.videos().list(
-            part='liveStreamingDetails',
-            id=content_id['id']['videoId'],
-        )
-        content_response = content_request.execute()
+        if not is_short(content_id['id']['videoId']):
+            content_request = youtube.videos().list(
+                part='liveStreamingDetails',
+                id=content_id['id']['videoId'],
+            )
+            content_response = content_request.execute()
 
-        live_details = content_response['items'][0].get('liveStreamingDetails', {})
-        actual_start_time = live_details.get('actualStartTime')
-        actual_end_time = live_details.get('actualEndTime')
-        # for item_id retrieved in ch_clive_response add it to the lc_broadcasts list
-        if actual_end_time:
-            complete_broadcasts.append(content_response['items'][0]['id'])
+            live_details = content_response['items'][0].get('liveStreamingDetails', {})
+            actual_start_time = live_details.get('actualStartTime')
+            actual_end_time = live_details.get('actualEndTime')
+            scheduled_start_time = live_details.get('scheduledStartTime')
+            # for item_id retrieved in ch_clive_response add it to the lc_broadcasts list
+            if actual_end_time:
+                complete_broadcasts.append(content_response['items'][0]['id'])
 
-        elif actual_start_time:
-            live_broadcasts.append(content_response['items'][0]['id'])
-        
-        else:
-            up_broadcasts.append(content_response['items'][0]['id'])
+            elif actual_start_time:
+                live_broadcasts.append(content_response['items'][0]['id'])
+            
+            elif scheduled_start_time and not actual_start_time:
+                up_broadcasts.append(content_response['items'][0]['id'])
+
+    print(up_broadcasts)
 
     # Retrieves data for upcoming broadcasts
     for content_id in up_broadcasts:
@@ -367,17 +371,14 @@ def streams(ch_id):
         stream_view_count_response = stream_view_count_request.execute()
         stream_start_time_response = stream_start_time_request.execute()
 
-        details = stream_start_time_response['items'][0].get('liveStreamingDetails', {})
-
         # Retrieves the video id, title, date published, and thumbnail respectively
         stream_title = stream_data_response['items'][0]['snippet']['title']
-        start_time = parse_date(details.get('scheduledStartTime'))
+        start_time = parse_date(stream_start_time_response['items'][0]['liveStreamingDetails']['scheduledStartTime'])
         stream_thumbnails_get = stream_data_response['items'][0]['snippet']['thumbnails']
         thumbnail_url = stream_thumbnails_get.get('medium')['url']
-        stream_view_count = format_big_numbers(stream_view_count_response['items'][0]['statistics']['viewCount'])
         
         row_up = []
-        row_up.extend([content_id, stream_title, start_time, thumbnail_url, stream_view_count])
+        row_up.extend([content_id, stream_title, start_time, thumbnail_url])
         ch_ulive_matrix.append(row_up)
 
 

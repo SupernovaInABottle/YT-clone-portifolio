@@ -9,6 +9,7 @@ a {
 :root {
   --background-color: rgb(30, 30, 30);
   --white-text: #ffffff;
+  --gray-border: rgb(54, 54, 54);
 }
 
 .default-text {
@@ -141,8 +142,9 @@ a {
     display: inline-flex;
     margin-left: 20px;
     margin-top: 70px;
-    content-visibility: auto;
-    contain-intrinsic-size: 500px; 
+    border: 1px solid var(--gray-border);
+    border-radius: 15px;
+    outline-offset: 10px;
 }
 
 .video-thumb-container {
